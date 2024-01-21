@@ -10,6 +10,7 @@
     <packaging>pom</packaging>
     <modules>
         <module>dispatcher</module>
+        <module>common-rabbitmq</module>
     </modules>
 
     <properties>
@@ -17,7 +18,7 @@
         <maven.compiler.target>11</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <log4j.version>1.2.17</log4j.version>
-        <lombok.servion>1.18.22</lombok.servion>
+        <lombok.version>1.18.26</lombok.version>
     </properties>
 
     <parent>
