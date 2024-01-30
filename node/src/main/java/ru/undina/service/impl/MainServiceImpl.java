@@ -4,20 +4,23 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.User;
 import ru.undina.dao.AppUserDAO;
 import ru.undina.dao.RawDataDAO;
+import ru.undina.entity.AppDocument;
 import ru.undina.entity.AppUser;
 import ru.undina.entity.RawData;
 import ru.undina.entity.enums.UserState;
+import ru.undina.exceptions.UploadFileException;
+import ru.undina.service.FileService;
 import ru.undina.service.MainService;
 import ru.undina.service.ProducerService;
+import ru.undina.service.enums.ServiceCommand;
 
 import static ru.undina.entity.enums.UserState.BASIC_STATE;
 import static ru.undina.entity.enums.UserState.WAIT_FOR_EMAIL_STATE;
-import static ru.undina.service.enums.ServiceCommands.*;
+import static ru.undina.service.enums.ServiceCommand.*;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +29,7 @@ public class MainServiceImpl implements MainService {
     private final RawDataDAO rawDataDAO;
     private final ProducerService producerService;
     private final AppUserDAO appUserDAO;
+    private final FileService fileService;
 
     @Override
     public void processTextMessage(Update update) {
@@ -36,7 +40,8 @@ public class MainServiceImpl implements MainService {
         String text = update.getMessage().getText();
         String output = "";
 
-        if (CANCEL.equals(text)) {
+        ServiceCommand serviceCommand = ServiceCommand.fromValue(text);
+        if (CANCEL.equals(serviceCommand)) {
             output = cancelProcess(appUser);
         } else if (BASIC_STATE.equals(userState)) {
             output = processServiceCommand(appUser, text);
@@ -60,9 +65,17 @@ public class MainServiceImpl implements MainService {
             return;
         }
 
-        //TODO добавить сохранения документа :)
-        String answer = "Документ успешно загружен! Ссылка для скачивания: http://test.ru/get-doc/777";
-        sendAnswer(answer, chatId);
+        try {
+            AppDocument doc = fileService.processDoc(update.getMessage());
+            //TODO Добавить генерацию ссылки для скачивания документа
+            var answer = "Документ успешно загружен! "
+                    + "Ссылка для скачивания: http://test.ru/get-doc/777";
+            sendAnswer(answer, chatId);
+        } catch (UploadFileException ex) {
+            log.error(ex);
+            String error = "К сожалению, загрузка файла не удалась. Повторите попытку позже.";
+            sendAnswer(error, chatId);
+        }
     }
 
     @Override
@@ -74,8 +87,8 @@ public class MainServiceImpl implements MainService {
             return;
         }
 
-        //TODO добавить сохранения фото :)
-        var answer = "Фото успешно загружено! Ссылка для скачивания: http://test.ru/get-photo/777";
+        String answer = "Фото успешно загружено! "
+                + "Ссылка для скачивания: http://test.ru/get-photo/777";
         sendAnswer(answer, chatId);
     }
 
@@ -124,12 +137,13 @@ public class MainServiceImpl implements MainService {
     }
 
     private String processServiceCommand(AppUser appUser, String cmd) {
-        if (REGISTRATION.equals(cmd)) {
+        ServiceCommand serviceCommand = ServiceCommand.fromValue(cmd);
+        if (REGISTRATION.equals(serviceCommand)) {
             //TODO добавить регистрацию
             return "Временно недоступно.";
-        } else if (HELP.equals(cmd)) {
+        } else if (HELP.equals(serviceCommand)) {
             return help();
-        } else if (START.equals(cmd)) {
+        } else if (START.equals(serviceCommand)) {
             return "Приветствую! Чтобы посмотреть список доступных команд введите /help";
         } else {
             return "Неизвестная команда! Чтобы посмотреть список доступных команд введите /help";
