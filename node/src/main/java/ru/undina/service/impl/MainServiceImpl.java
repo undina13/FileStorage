@@ -9,6 +9,7 @@ import org.telegram.telegrambots.meta.api.objects.User;
 import ru.undina.dao.AppUserDAO;
 import ru.undina.dao.RawDataDAO;
 import ru.undina.entity.AppDocument;
+import ru.undina.entity.AppPhoto;
 import ru.undina.entity.AppUser;
 import ru.undina.entity.RawData;
 import ru.undina.entity.enums.UserState;
@@ -87,9 +88,17 @@ public class MainServiceImpl implements MainService {
             return;
         }
 
-        String answer = "Фото успешно загружено! "
-                + "Ссылка для скачивания: http://test.ru/get-photo/777";
-        sendAnswer(answer, chatId);
+        try {
+            AppPhoto photo = fileService.processPhoto(update.getMessage());
+            //TODO добавить генерацию ссылки для скачивания фото
+            var answer = "Фото успешно загружено! "
+                    + "Ссылка для скачивания: http://test.ru/get-photo/777";
+            sendAnswer(answer, chatId);
+        } catch (UploadFileException ex) {
+            log.error(ex);
+            String error = "К сожалению, загрузка фото не удалась. Повторите попытку позже.";
+            sendAnswer(error, chatId);
+        }
     }
 
     private boolean isNotAllowToSendContent(Long chatId, AppUser appUser) {
@@ -105,6 +114,7 @@ public class MainServiceImpl implements MainService {
         }
         return false;
     }
+
     private void saveRawData(Update update) {
         RawData rawData = RawData.builder()
                 .event(update)
